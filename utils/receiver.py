@@ -1,12 +1,15 @@
+import os
 import socket
 import struct
 
-def download_file(file_name, host='localhost', port=11322):
+def download_file(file_name,file_path='./Downloads', host='localhost', port=11322):
     """下载文件"""
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((host, port))
-    
+
     try:
+        command = f'download_file:{file_name}'
+        client_socket.send(command.encode('utf-8'))
         # 接收文件大小
         size_data = client_socket.recv(4)   
         size = struct.unpack('!I', size_data)[0]
@@ -19,12 +22,12 @@ def download_file(file_name, host='localhost', port=11322):
             if not chunk:
                 break
             received_data += chunk
-        
+        full_file_path = os.path.join(file_path, file_name)
         # 保存文件
-        with open(file_name, 'wb') as f:
+        with open(full_file_path, 'wb') as f:
             f.write(received_data)
             
         print("文件下载完成")
-        return(file_name)
+        return(full_file_path)
     finally:
         client_socket.close()
