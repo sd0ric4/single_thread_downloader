@@ -25,6 +25,6 @@ def download_file(file_name, host='localhost', port=11322):
             f.write(received_data)
             
         print("文件下载完成")
-        
+        return(file_name)
     finally:
         client_socket.close()

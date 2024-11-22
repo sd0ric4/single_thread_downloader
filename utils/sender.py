@@ -14,7 +14,7 @@ def start_server(host='0.0.0.0', port=11322):
         
         try:
             # 读取图片
-            with open('downloaded.jpg', 'rb') as f:
+            with open('images/'+'downloaded.jpg', 'rb') as f:
                 image_data = f.read()
             
             # 发送文件大小
