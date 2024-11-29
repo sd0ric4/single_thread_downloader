@@ -1,54 +1,40 @@
-# utils/analyzer.py
 from scapy.all import *
 import matplotlib.pyplot as plt
-from scapy.layers.inet import TCP
-from scapy.utils import rdpcap
 
-def analyze_pcap(filename):
-    # 读取pcap文件
-    packets = rdpcap(filename)
-    
-    # 提取TCP连接建立的包
-    syn_packet = None
-    syn_ack_packet = None
-    ack_packet = None
-    
-    for packet in packets:
-        if TCP in packet:
-            if packet[TCP].flags & 0x02:  # SYN
-                syn_packet = packet
-            elif packet[TCP].flags & 0x12:  # SYN-ACK
-                syn_ack_packet = packet
-            elif packet[TCP].flags & 0x10:  # ACK
-                if syn_ack_packet:  # 确保这是连接建立的ACK
-                    ack_packet = packet
-                    break
+pcap_path = "capture.pcap"  # 数据包路径
+packets = rdpcap(pcap_path)  # 读取数据包
 
-    # 绘制TCP三次握手图
-    plt.figure(figsize=(10, 6))
-    
-    # 设置中文字体
-    plt.rcParams['font.sans-serif'] = ['SimHei']
-    plt.rcParams['axes.unicode_minus'] = False
-    
-    times = []
-    if syn_packet:
-        times.append(syn_packet.time)
-    if syn_ack_packet:
-        times.append(syn_ack_packet.time)
-    if ack_packet:
-        times.append(ack_packet.time)
-    
-    base_time = min(times)
-    
-    # 画图
-    client_y = 1
-    server_y = 0
-    
-    plt.plot([0, 10], [client_y, client_y], 'b-', label='客户端')
-    plt.plot([0, 10], [server_y, server_y], 'r-', label='服务器')
-    
-    # 绘制箭头
-    if syn_packet and syn_ack_packet and ack_packet:
-        plt.arrow(2, client_y, 0, -0.8, head_width=0.1, head_length=0.1, fc='k', ec='k')
-        plt.text(1.5, 0.6, 'SYN', fontsize=10)
+plt.figure(figsize=(10, 8))  # 设置figure大小
+# 隐藏边框
+plt.gca().spines["top"].set_alpha(.0)
+plt.gca().spines["bottom"].set_alpha(.0)
+plt.gca().spines["right"].set_alpha(.0)
+plt.gca().spines["left"].set_alpha(.0)
+plt.title("TCP connection", fontsize=18)  # 添加标题
+plt.axis([0, 10, 0, 10])  # 横纵坐标范围
+plt.xticks([1, 9], [packets[0]["IP"].src, packets[0]["IP"].dst])  # 添加横坐标标签
+plt.yticks([])  # 隐藏纵坐标标签
+# 两条竖线
+plt.vlines(x=1, ymin=0, ymax=10, linestyles='dotted')
+plt.vlines(x=9, ymin=0, ymax=10, linestyles='dotted')
+# 添加文字
+plt.text(1, 10, 'Client', horizontalalignment='center', fontsize=15)
+plt.text(9, 10, 'Server', horizontalalignment='center', fontsize=15)
+
+client_ip = packets[0]["IP"].src
+for i in range(len(packets)):  # 对每一个数据包的数据进行处理
+    if packets[i]["IP"].src == client_ip:  # 如果是从客户端发往服务器
+        p1 = [1, 9 - 2 * i]
+        p2 = [9, 9 - 2 * i - 1]
+    else:  # 如果是从服务器发往客户端
+        p1 = [9, 9 - 2 * i]
+        p2 = [1, 9 - 2 * i - 1]
+    # 画一条带箭头的线
+    plt.arrow(p1[0], p1[1], p2[0] - p1[0], p2[1] - p1[1],
+              length_includes_head=True,  # 长度包含箭头部分
+              head_width=0.1, head_length=0.2, color='black')  # 箭头的长宽和颜色
+    # 添加数据信息
+    message = 'sport=' + str(packets[i]["TCP"].sport) + ',' + 'dport=' + str(packets[i]["TCP"].dport) + ',' + 'seq=' + str(packets[i]["TCP"].seq) + ',' + 'ack=' + str(packets[i]["TCP"].ack) + ',' + 'flags=' + str(packets[i]["TCP"].flags)
+    plt.text(5, p1[1], message, horizontalalignment='center', fontsize=10)
+
+plt.savefig("TCP_connection.png")  # 保存图片
