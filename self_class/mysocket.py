@@ -1,12 +1,15 @@
 import socket
 import struct
-
+from typing import Optional
 class MySocket(socket.socket):
-    def __init__(self, sock=None):
+    def __init__(self, sock: Optional[socket.socket] = None):
         if sock is None:
             super().__init__(socket.AF_INET, socket.SOCK_STREAM)
         else:
-            super().__init__(sock.family, sock.type, sock.proto, fileno=sock.fileno())
+            # 修正初始化方式
+            fd = sock.detach()  # 首先分离文件描述符
+            super().__init__(fileno=fd)  # 使用 fileno 参数而不是 _sock
+            self.settimeout(sock.gettimeout())
 
     def mysend(self, msg):
         try:
