@@ -2,6 +2,8 @@ import os
 import struct
 import gradio as gr
 from self_class.mysocket import MySocket
+import tempfile
+from tqdm import tqdm
 
 def download_file(file_name : str, file_path='./Downloads', host='localhost', port=11322):
     """下载文件"""
@@ -14,20 +16,34 @@ def download_file(file_name : str, file_path='./Downloads', host='localhost', po
         # 接收文件大小
         size_data = client_socket.recv_all(4)
         size = struct.unpack('!I', size_data)[0]
+        print(f"文件大小: {size} bytes")
+
+        # 创建进度条
+        progress_bar = tqdm(total=size, unit='B', unit_scale=True, desc=file_name)
         
-        # 接收文件数据
-        received_data = b''
-        # 为什么要判断len(received_data) < size？因为recv()方法不保证一次性接收完所有数据
-        while len(received_data) < size:
-            chunk = client_socket.recv_all(1024)
+        # 创建临时文件，在目标目录下
+        temp_file = tempfile.NamedTemporaryFile(delete=False, dir=file_path)
+        temp_file_name = temp_file.name
+        print(f"正在下载文件到临时文件: {temp_file_name}")
+        
+        # 接收并写入文件
+        received_size = 0
+        while received_size < size:
+            chunk_size = min(1024, size - received_size)
+            chunk = client_socket.recv_all(chunk_size)
             if not chunk:
                 break
-            received_data += chunk
+            temp_file.write(chunk)
+            received_size += len(chunk)
+            progress_bar.update(len(chunk))
+        
+        temp_file.close()
+        progress_bar.close()
+        
+        # 将临时文件移动到目标路径
         full_file_path = os.path.join(file_path, file_name)
-        # 保存文件
-        with open(full_file_path, 'wb') as f:
-            f.write(received_data)
-            
+        os.makedirs(file_path, exist_ok=True)
+        os.replace(temp_file_name, full_file_path)
         print("文件下载完成")
         return full_file_path
     finally:
