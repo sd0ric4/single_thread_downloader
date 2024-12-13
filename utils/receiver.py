@@ -1,5 +1,4 @@
 import os
-import socket
 import struct
 import gradio as gr
 from self_class.mysocket import MySocket
